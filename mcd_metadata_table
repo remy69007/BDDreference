@@ -1,0 +1,43 @@
+-------------------------- 
+-- Auteur : RMA
+-- Crée le : 13/11/19
+
+-- CAPITALISATION : BDD REFERENCE
+-- Script pour la scréation du schéma contenant les métadonnées des tables de la base.
+----------------------------------------
+
+\set on_error_stop true
+
+create schema metadata ;
+
+----------------------------------------------
+-- creation & import table logement autorisé
+drop table if exists metadata.metachamp;
+create table metadata.metachamp
+(
+    idchamp serial primary key not null,
+    champ varchar(50) not null,
+	description varchar (200) not null,
+	sschema varchar(50) not null,
+	ttable varchar(50) not null,
+	origin varchar (50) not null,
+	originmethod varchar (100) not null,	
+	dateinteg date not null,
+	idsource numeric
+) ;
+
+create index ix_metachamp on  metadata.metachamp using btree (sschema, ttable, champ, origin);
+
+-- saisie METADATA table metadata.metachamp
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('champ','nom du champ sur lequel porte la description','metadata','metachamp','modaal script','create_bddreference_table', '13/11/19', 1),
+	('description','description de l''information contenue dans la colonne champ','metadata','metachamp', 'modaal script','create_bddreference_table', '13/11/19', 1),
+	('sschema','nom du schéma contenant le champ décrit par la description','metadata','metachamp', 'modaal script','create_bddreference_table', '13/11/19', 1),
+	('ttable','nom de la table contenant le champ décrit par la description','metadata','metachamp', 'modaal script','create_bddreference_table', '13/11/19', 1),
+	('origin','indique la provenance de la donnée contenue dans champ','metadata','metachamp', 'modaal script','create_bddreference_table', '13/11/19', 1),
+	('originmethod','indique le nom du script ou une description de la méthode d''import','metadata','metachamp', 'modaal script','create_bddreference_table', '13/11/19', 1),
+	('dateinteg','correspond à la date d''intégration de la donnée dans la table','metadata','metachamp', 'modaal script','create_bddreference_table', '13/11/19', 1),
+	('idsource','identifiant de la source de la donnée contenue dans champ','metadata','metachamp', 'modaal script','create_bddreference_table', '13/11/19', 1)
+	;
+

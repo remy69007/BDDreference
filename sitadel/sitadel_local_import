@@ -1,0 +1,295 @@
+-------------------------- 
+-- Auteur : RMA
+-- Crée le : 05/11/19
+
+-- ETUDE  : The last project
+-- Script pour intégration et traitement SITADEL
+----------------------------------------
+
+\set ON_ERROR_STOP on
+
+---------------------------
+--IMPORT DATA SITADEL 
+create schema if not exists sitadel ;
+
+----------------------------------------------
+-- creation & import table local autorisé
+-- warning : ordre des colonnes importantes cause insert into
+drop table if exists sitadel.localautorise;
+create table sitadel.localautorise
+(
+    idgeo varchar(6),
+    annee varchar(4),
+	hotel_surf numeric,
+	commerce_surf numeric,
+	bureau_surf numeric,
+	artisanat_surf numeric,
+	indus_surf numeric,
+	agri_surf numeric,
+	entrepot_surf numeric,
+	speducation_surf numeric,
+	spsocial_surf numeric,
+	sptpt_surf numeric,
+	spouvrage_surf numeric,
+	spsante_surf numeric,
+	sploisir_surf numeric,
+	totalsp_surf numeric,
+	total_surf numeric,	
+	primary key (idgeo,annee)
+) ;
+-- table temporaire pour conversion des data avant import dans table finale
+drop table if exists sitadel.localtemp;
+create table sitadel.localtemp
+(
+    id varchar(6),
+    annee varchar(4),
+	hotel_surf text,
+	commerce_surf text,
+	bureau_surf text,
+	artisanat_surf text,
+	indus_surf text,
+	agri_surf text,
+	entrepot_surf text,
+	speducation_surf text,
+	spsocial_surf text,
+	sptpt_surf text,
+	spouvrage_surf text,
+	spsante_surf text,
+	sploisir_surf text,
+	totalsp_surf text,
+	total_surf text	
+) ;
+
+-- import du csv local autorisé
+copy sitadel.localtemp 
+	from 'Z:\DATA\BDD\SITADEL\INPUT\Sitadel2_localautorise.csv' with delimiter  ';'  csv header  ;
+	
+-- MISE EN FORME table local autorisé
+-- récupérer le "0" des codes insee des dept et communes
+alter table sitadel.localtemp drop column idgeo;
+alter table sitadel.localtemp add column idgeo varchar(6);
+update sitadel.localtemp a set idgeo = concat('0',a.ID) 
+	where length(a.id)=4 or length(a.id)=1
+;
+
+update sitadel.localtemp a set idgeo = id 
+	where idgeo isnull
+;
+
+-- retirer le caractère spécial '-' dans les colonnes
+update sitadel.localtemp set hotel_surf = replace(hotel_surf,'-',null)
+	where hotel_surf ='-' ;
+update sitadel.localtemp set commerce_surf = replace(commerce_surf,'-',null)
+	where commerce_surf ='-' ;
+update sitadel.localtemp set bureau_surf = replace(bureau_surf,'-',null)
+	where bureau_surf ='-' ;
+update sitadel.localtemp set artisanat_surf = replace(artisanat_surf,'-',null)
+	where artisanat_surf ='-' ;
+update sitadel.localtemp set indus_surf = replace(indus_surf,'-',null)
+	where indus_surf ='-' ;
+update sitadel.localtemp set agri_surf = replace(agri_surf,'-',null)
+	where agri_surf ='-' ;
+update sitadel.localtemp set entrepot_surf = replace(entrepot_surf,'-',null)
+	where entrepot_surf ='-' ;
+update sitadel.localtemp set speducation_surf = replace(speducation_surf,'-',null)
+	where speducation_surf ='-' ;
+update sitadel.localtemp set spsocial_surf = replace(spsocial_surf,'-',null)
+	where spsocial_surf ='-' ;
+update sitadel.localtemp set sptpt_surf = replace(sptpt_surf,'-',null)
+	where sptpt_surf ='-' ;
+update sitadel.localtemp set spouvrage_surf = replace(spouvrage_surf,'-',null)
+	where spouvrage_surf ='-' ;
+update sitadel.localtemp set spsante_surf = replace(spsante_surf,'-',null)
+	where spsante_surf ='-' ;
+update sitadel.localtemp set sploisir_surf = replace(sploisir_surf,'-',null)
+	where sploisir_surf ='-' ;
+update sitadel.localtemp set totalsp_surf = replace(totalsp_surf,'-',null)
+	where totalsp_surf ='-' ;
+update sitadel.localtemp set total_surf = replace(total_surf,'-',null)
+	where total_surf ='-' ;
+
+-- Import des données corrigées dans table finale
+-- warning : ne pas modifier l'ordre des colonnes dans table destination
+insert into sitadel.localautorise 
+	select idgeo, annee, 
+		cast(hotel_surf as numeric), 
+		cast(commerce_surf as numeric), 
+		cast(bureau_surf as numeric), 
+		cast(artisanat_surf as numeric),
+		cast(indus_surf as numeric), 
+		cast(agri_surf as numeric), 
+		cast(entrepot_surf as numeric), 
+		cast(speducation_surf as numeric),
+		cast(spsocial_surf as numeric), 
+		cast(sptpt_surf as numeric), 
+		cast(spouvrage_surf as numeric),
+		cast(spsante_surf as numeric),
+		cast(sploisir_surf as numeric),
+		cast(totalsp_surf as numeric),
+		cast(total_surf as numeric)
+	from sitadel.localtemp;
+	
+drop table sitadel.localtemp;
+
+-- insertion métadata table sitadel.localautorise
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('idgeo','code géographique SOES de l''entité','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('annee','Année en date réelle des données sitadel','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('hotel_surf','Surface autorisée en m² de locaux  d''hébergement hôtelier','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('commerce_surf','Surface autorisée en m² de locaux  de commerce','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('bureau_surf','Surface autorisée en m² de locaux  de bureaux','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('artisanat_surf','Surface autorisée en m² de locaux  d''artisanat','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('indus_surf','Surface autorisée en m² de locaux industriels','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('agri_surf','Surface autorisée en m² de locaux  agricoles','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('entrepot_surf','Surface autorisée en m² d''entrepôts','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('speducation_surf','Surface autorisée en m² de locaux de service public - enseignement-recherche','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('spsocial_surf','Surface autorisée en m² de locaux de service public - action sociale','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('sptpt_surf','Surface autorisée en m² de locaux de service public - transport','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('spouvrage_surf','Surface autorisée en m² de locaux de service public – ouvrages spéciaux','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('spsante_surf','Surface autorisée en m² de locaux de service public - santé','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('sploisir_surf','Surface autorisée en m² de locaux de service public – culture loisirs','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('totalsp_surf','Surface totale autorisée en m² de locaux de service public','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
+	('total_surf','Total surface autorisée de local en m²','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1)
+	;
+
+----------------------------------------------
+-- creation & import table local commencé
+-- warning : ordre des colonnes importantes cause insert into
+drop table sitadel.localcommence;
+create table sitadel.localcommence
+(
+    idgeo varchar(6),
+    annee varchar(4),
+	hotel_surf numeric,
+	commerce_surf numeric,
+	bureau_surf numeric,
+	artisanat_surf numeric,
+	indus_surf numeric,
+	agri_surf numeric,
+	entrepot_surf numeric,
+	speducation_surf numeric,
+	spsocial_surf numeric,
+	sptpt_surf numeric,
+	spouvrage_surf numeric,
+	spsante_surf numeric,
+	sploisir_surf numeric,
+	totalsp_surf numeric,
+	total_surf numeric,	
+	primary key (idgeo,annee)
+) ;
+-- table temporaire pour conversion des data avant import dans table finale
+drop table sitadel.localtemp;
+create table sitadel.localtemp
+(
+    id varchar(6),
+    annee varchar(4),
+	hotel_surf text,
+	commerce_surf text,
+	bureau_surf text,
+	artisanat_surf text,
+	indus_surf text,
+	agri_surf text,
+	entrepot_surf text,
+	speducation_surf text,
+	spsocial_surf text,
+	sptpt_surf text,
+	spouvrage_surf text,
+	spsante_surf text,
+	sploisir_surf text,
+	totalsp_surf text,
+	total_surf text	
+) ;
+
+-- import du csv local commencé
+COPY sitadel.localtemp 
+    from 'Z:\DATA\BDD\SITADEL\INPUT\Sitadel2_localcommence.csv' with delimiter  ';'  csv header  ;
+	
+-- MISE EN FORME table local commencé
+-- récupérer le "0" des codes insee des dept et communes
+alter table sitadel.localtemp drop column idgeo;
+alter table sitadel.localtemp add column idgeo varchar(6);
+update sitadel.localtemp a set idgeo = concat('0',a.ID) 
+	where length(a.id)=4 or length(a.id)=1
+;
+
+update sitadel.localtemp a set idgeo = id 
+	where idgeo isnull
+;
+
+-- retirer le caractère spécial '-' dans les colonnes
+update sitadel.localtemp set hotel_surf = replace(hotel_surf,'-',null)
+	where hotel_surf ='-' ;
+update sitadel.localtemp set commerce_surf = replace(commerce_surf,'-',null)
+	where commerce_surf ='-' ;
+update sitadel.localtemp set bureau_surf = replace(bureau_surf,'-',null)
+	where bureau_surf ='-' ;
+update sitadel.localtemp set artisanat_surf = replace(artisanat_surf,'-',null)
+	where artisanat_surf ='-' ;
+update sitadel.localtemp set indus_surf = replace(indus_surf,'-',null)
+	where indus_surf ='-' ;
+update sitadel.localtemp set agri_surf = replace(agri_surf,'-',null)
+	where agri_surf ='-' ;
+update sitadel.localtemp set entrepot_surf = replace(entrepot_surf,'-',null)
+	where entrepot_surf ='-' ;
+update sitadel.localtemp set speducation_surf = replace(speducation_surf,'-',null)
+	where speducation_surf ='-' ;
+update sitadel.localtemp set spsocial_surf = replace(spsocial_surf,'-',null)
+	where spsocial_surf ='-' ;
+update sitadel.localtemp set sptpt_surf = replace(sptpt_surf,'-',null)
+	where sptpt_surf ='-' ;
+update sitadel.localtemp set spouvrage_surf = replace(spouvrage_surf,'-',null)
+	where spouvrage_surf ='-' ;
+update sitadel.localtemp set spsante_surf = replace(spsante_surf,'-',null)
+	where spsante_surf ='-' ;
+update sitadel.localtemp set sploisir_surf = replace(sploisir_surf,'-',null)
+	where sploisir_surf ='-' ;
+update sitadel.localtemp set totalsp_surf = replace(totalsp_surf,'-',null)
+	where totalsp_surf ='-' ;
+update sitadel.localtemp set total_surf = replace(total_surf,'-',null)
+	where total_surf ='-' ;
+
+-- Import des données corrigées dans table finale
+-- warning : ne pas modifier l'ordre des colonnes dans table destination
+insert into sitadel.localcommence 
+	select idgeo, annee, 
+		cast(hotel_surf as numeric), 
+		cast(commerce_surf as numeric), 
+		cast(bureau_surf as numeric), 
+		cast(artisanat_surf as numeric),
+		cast(indus_surf as numeric), 
+		cast(agri_surf as numeric), 
+		cast(entrepot_surf as numeric), 
+		cast(speducation_surf as numeric),
+		cast(spsocial_surf as numeric), 
+		cast(sptpt_surf as numeric), 
+		cast(spouvrage_surf as numeric),
+		cast(spsante_surf as numeric),
+		cast(sploisir_surf as numeric),
+		cast(totalsp_surf as numeric),
+		cast(total_surf as numeric)
+	from sitadel.localtemp;
+	
+drop table sitadel.localtemp;
+
+-- insertion métadata table sitadel.localcommence
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('idgeo','code géographique SOES de l''entité','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('annee','Année en date réelle des données sitadel','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('hotel_surf','Surface commencée en m² de locaux  d''hébergement hôtelier','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('commerce_surf','Surface commencée en m² de locaux  de commerce','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('bureau_surf','Surface commencée en m² de locaux  de bureaux','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('artisanat_surf','Surface commencée en m² de locaux  d''artisanat','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('indus_surf','Surface commencée en m² de locaux industriels','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('agri_surf','Surface commencée en m² de locaux  agricoles','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('entrepot_surf','Surface commencée en m² d''entrepôts','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('speducation_surf','Surface commencée en m² de locaux de service public - enseignement-recherche','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('spsocial_surf','Surface commencée en m² de locaux de service public - action sociale','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('sptpt_surf','Surface commencée en m² de locaux de service public - transport','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('spouvrage_surf','Surface commencée en m² de locaux de service public – ouvrages spéciaux','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('spsante_surf','Surface commencée en m² de locaux de service public - santé','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('sploisir_surf','Surface commencée en m² de locaux de service public – culture loisirs','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('totalsp_surf','Surface totale commencée en m² de locaux de service public','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
+	('total_surf','Total surface commencée de local en m²','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1)
+	;

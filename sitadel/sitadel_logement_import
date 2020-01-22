@@ -1,0 +1,234 @@
+-------------------------- 
+-- Auteur : RMA
+-- Crée le : 05/11/19
+
+-- ETUDE  : The last project
+-- Script pour intégration et traitement SITADEL
+----------------------------------------
+
+
+\set ON_ERROR_STOP on
+
+---------------------------
+--IMPORT DATA SITADEL 
+create schema if not exists sitadel ;
+
+----------------------------------------------
+-- creation & import table logement autorisé
+drop table if exists sitadel.lgtautorise;
+create table sitadel.lgtautorise
+(
+    idgeo varchar(6),
+    annee varchar(4),
+	lgtindiv_nb numeric,
+	lgtindivgp_nb numeric,
+	lgtcollectif_nb numeric,
+	lgtresidence_nb numeric,
+	lgttotal_nb numeric,
+	lgtindiv_surf numeric,
+	lgtindivgp_surf numeric,
+	lgtcollectif_surf numeric,
+	lgtresidence_surf numeric,
+	lgttotal_surf numeric,
+	primary key (idgeo,annee)
+) ;
+-- table temporaire pour conversion des data avant import dans table finale
+drop table if exists sitadel.logatemp;
+create table sitadel.logatemp
+(
+    id varchar(6),
+    annee varchar(4),
+	lgtindiv_nb text,
+	lgtindivgp_nb text,
+	lgtcollectif_nb text,
+	lgtresidence_nb text,
+	lgttotal_nb text,
+	lgtindiv_surf text,
+	lgtindivgp_surf text,
+	lgtcollectif_surf text,
+	lgtresidence_surf text,
+	lgttotal_surf text
+) ;
+
+-- import du csv logement autorisé
+copy sitadel.logatemp 
+    from 'Z:\DATA\BDD\SITADEL\INPUT\Sitadel2_logementautorise.csv' with delimiter  ';'  csv header  ;
+	
+-- MISE EN FORME table logement autorisé
+-- récupérer le "0" des codes insee des dept et communes
+alter table sitadel.logatemp drop column if exists idgeo;
+alter table sitadel.logatemp add column idgeo varchar(6);
+update sitadel.logatemp a set idgeo = concat('0',a.ID) 
+	where length(a.id)=4 or length(a.id)=1
+;
+
+update sitadel.logatemp a set idgeo = id 
+	where idgeo isnull
+;
+
+-- retirer le caractère spécial '-' dans les colonnes
+update sitadel.logatemp set lgtindiv_nb = replace(lgtindiv_nb,'-',null)
+	where lgtindiv_nb ='-' ;
+update sitadel.logatemp set lgtindivgp_nb = replace(lgtindivgp_nb,'-',null)
+	where lgtindivgp_nb ='-' ;
+update sitadel.logatemp set lgtcollectif_nb = replace(lgtcollectif_nb,'-',null)
+	where lgtcollectif_nb ='-' ;
+update sitadel.logatemp set lgtresidence_nb = replace(lgtresidence_nb,'-',null)
+	where lgtresidence_nb ='-' ;
+update sitadel.logatemp set lgttotal_nb = replace(lgttotal_nb,'-',null)
+	where lgttotal_nb ='-' ;
+update sitadel.logatemp set lgtindiv_surf = replace(lgtindiv_surf,'-',null)
+	where lgtindiv_surf ='-' ;
+update sitadel.logatemp set lgtindivgp_surf = replace(lgtindivgp_surf,'-',null)
+	where lgtindivgp_surf ='-' ;
+update sitadel.logatemp set lgtcollectif_surf = replace(lgtcollectif_surf,'-',null)
+	where lgtcollectif_surf ='-' ;
+update sitadel.logatemp set lgtresidence_surf = replace(lgtresidence_surf,'-',null)
+	where lgtresidence_surf ='-' ;
+update sitadel.logatemp set lgttotal_surf = replace(lgttotal_surf,'-',null)
+	where lgttotal_surf ='-' ;
+
+-- Import des données corrigées dans table finale
+-- WARNING : ne pas modifier l'ordre des colonnes dans table destination
+insert into sitadel.lgtautorise 
+	select idgeo, annee, 
+		cast(lgtindiv_nb as numeric), 
+		cast(lgtindivgp_nb as numeric), 
+		cast(lgtcollectif_nb as numeric), 
+		cast(lgtresidence_nb as numeric),
+		cast(lgttotal_nb as numeric), 
+		cast(lgtindiv_surf as numeric), 
+		cast(lgtindivgp_surf as numeric), 
+		cast(lgtcollectif_surf as numeric),
+		cast(lgtresidence_surf as numeric), 
+		cast(lgttotal_surf as numeric) 
+	from sitadel.logatemp;
+	
+drop table if exists sitadel.logatemp;
+
+-- insertion métadata table sitadel.lgtautorise
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('idgeo','code géographique de la commune','sitadel','lgtautorise','SOES','sitadel_logement_import', '13/11/19', 1),
+	('annee','Année en date réelle des données sitadel','sitadel','lgtautorise','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtindiv_nb','Nombre de logements autorisés individuels purs','sitadel','lgtautorise','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtindivgp_nb','Nombre de logements autorisés individuels groupés','sitadel','lgtautorise','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtcollectif_nb','Nombre de logements autorisés collectifs','sitadel','lgtautorise','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtresidence_nb','Nombre de logements autorisés en résidence','sitadel','lgtautorise','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgttotal_nb','Total nombre de logements autorisés','sitadel','lgtautorise','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtindiv_surf','Surface en m² de logements autorisés individuels purs','sitadel','lgtautorise','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtindivgp_surf','Surface en m² de logements autorisés individuels groupés','sitadel','lgtautorise','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtcollectif_surf','Surface en m² de logements autorisés collectifs','sitadel','lgtautorise','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtresidence_surf','Surface en m² de logements autorisés en résidences','sitadel','lgtautorise','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgttotal_surf','Total surface en m²','sitadel','lgtautorise','SOES','sitadel_logement_import', '13/11/19', 1)
+	;
+
+----------------------------------------------
+-- creation & import table logement commencé
+drop table if exists sitadel.lgtcommence;
+create table sitadel.lgtcommence
+(
+    idgeo varchar(6),
+    annee varchar(4),
+	lgtindiv_nb numeric,
+	lgtindivgp_nb numeric,
+	lgtcollectif_nb numeric,
+	lgtresidence_nb numeric,
+	lgttotal_nb numeric,
+	lgtindiv_surf numeric,
+	lgtindivgp_surf numeric,
+	lgtcollectif_surf numeric,
+	lgtresidence_surf numeric,
+	lgttotal_surf numeric,
+	primary key (idgeo,annee)
+) ;
+-- table temporaire pour conversion des data avant import dans table finale
+drop table if exists sitadel.logctemp;
+create table sitadel.logctemp
+(
+    id varchar(6),
+    annee varchar(4),
+	lgtindiv_nb text,
+	lgtindivgp_nb text,
+	lgtcollectif_nb text,
+	lgtresidence_nb text,
+	lgttotal_nb text,
+	lgtindiv_surf text,
+	lgtindivgp_surf text,
+	lgtcollectif_surf text,
+	lgtresidence_surf text,
+	lgttotal_surf text
+) ;
+
+-- import du csv logement commencé
+copy sitadel.logctemp 
+    from 'Z:\DATA\BDD\SITADEL\INPUT\Sitadel2_logementcommencev2.csv' with delimiter  ';'  csv header  ;
+
+-- MISE EN FORME table logement commencé
+-- récupérer le "0" des codes insee des dept et communes
+alter table sitadel.logctemp drop column if exists idgeo;
+alter table sitadel.logctemp add column idgeo varchar(6);
+update sitadel.logctemp a set idgeo = concat('0',a.ID) 
+	where length(a.id)=4 or length(a.id)=1
+;
+
+update sitadel.logctemp a set idgeo = id 
+	where idgeo isnull
+;
+
+-- retirer le caractère spécial '-' dans les colonnes
+update sitadel.logctemp set lgtindiv_nb = replace(lgtindiv_nb,'-',null)
+	where lgtindiv_nb ='-' ;
+update sitadel.logctemp set lgtindivgp_nb = replace(lgtindivgp_nb,'-',null)
+	where lgtindivgp_nb ='-' ;
+update sitadel.logctemp set lgtcollectif_nb = replace(lgtcollectif_nb,'-',null)
+	where lgtcollectif_nb ='-' ;
+update sitadel.logctemp set lgtresidence_nb = replace(lgtresidence_nb,'-',null)
+	where lgtresidence_nb ='-' ;
+update sitadel.logctemp set lgttotal_nb = replace(lgttotal_nb,'-',null)
+	where lgttotal_nb ='-' ;
+update sitadel.logctemp set lgtindiv_surf = replace(lgtindiv_surf,'-',null)
+	where lgtindiv_surf ='-' ;
+update sitadel.logctemp set lgtindivgp_surf = replace(lgtindivgp_surf,'-',null)
+	where lgtindivgp_surf ='-' ;
+update sitadel.logctemp set lgtcollectif_surf = replace(lgtcollectif_surf,'-',null)
+	where lgtcollectif_surf ='-' ;
+update sitadel.logctemp set lgtresidence_surf = replace(lgtresidence_surf,'-',null)
+	where lgtresidence_surf ='-' ;
+update sitadel.logctemp set lgttotal_surf = replace(lgttotal_surf,'-',null)
+	where lgttotal_surf ='-' ;
+
+-- Import des données corrigées dans table finale
+-- WARNING : ne pas modifier l'ordre des colonnes dans table destination
+insert into sitadel.lgtcommence 
+	select idgeo, annee, 
+		cast(lgtindiv_nb as numeric), 
+		cast(lgtindivgp_nb as numeric), 
+		cast(lgtcollectif_nb as numeric), 
+		cast(lgtresidence_nb as numeric),
+		cast(lgttotal_nb as numeric),
+		cast(lgtindiv_surf as numeric), 
+		cast(lgtindivgp_surf as numeric), 
+		cast(lgtcollectif_surf as numeric),
+		cast(lgtresidence_surf as numeric), 
+		cast(lgttotal_surf as numeric) 		
+	from sitadel.logctemp;
+	
+drop table if exists sitadel.logctemp;
+
+-- insertion métadata table sitadel.lgtcommence
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('idgeo','code géographique de la commune','sitadel','lgtcommence','SOES','sitadel_logement_import', '13/11/19', 1),
+	('annee','Année en date réelle des données sitadel','sitadel','lgtcommence','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtindiv_nb','Nombre de logements commencés individuels purs','sitadel','lgtcommence','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtindivgp_nb','Nombre de logements commencés individuels groupés','sitadel','lgtcommence','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtcollectif_nb','Nombre de logements commencés collectifs','sitadel','lgtcommence','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtresidence_nb','Nombre de logements commencés en résidence','sitadel','lgtcommence','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgttotal_nb','Total nombre de logements commencés','sitadel','lgtcommence','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtindiv_surf','Surface en m² de logements commencés individuels purs','sitadel','lgtcommence','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtindivgp_surf','Surface en m² de logements commencés individuels groupés','sitadel','lgtcommence','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtcollectif_surf','Surface en m² de logements commencés collectifs','sitadel','lgtcommence','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgtresidence_surf','Surface en m² de logements commencés en résidences','sitadel','lgtcommence','SOES','sitadel_logement_import', '13/11/19', 1),
+	('lgttotal_surf','Total surface en m²','sitadel','lgtcommence','SOES','sitadel_logement_import', '13/11/19', 1)
+	;

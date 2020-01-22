@@ -1,0 +1,259 @@
+-------------------------- 
+-- Auteur : RMA
+-- Crée le : 05/11/19
+
+-- MISSION  : BDD reference
+-- IMPORT BDD REFERENCE : limites communales source OSM
+----------------------------------------
+
+------- CONTRAINTES -------
+--
+-- les tables de reférences INSEE doivent etre importées au préalable dans le schema administratif
+-- sinon les jointures pour création table spatial ne seront pas possibles
+--
+---------------------------
+
+\set ON_ERROR_STOP on
+
+select current_timestamp ;  -- heure debut script
+create schema if not exists administratif_osm ;
+
+--------------------------
+---  IMPORT COMMUNE SIMPLIFIEE OSM (FRANCE ENTIERE y compris DOM)
+\! shp2pgsql -W LATIN1 -s 4326 -dDI "Z:\DATA\BDD\OSM\communes-20190101\communes-20190101_simplif\shp\communes-20190101.shp" administratif_osm.communefe_simplif  | psql service=bddref
+
+-- mise en forme table commune avec limite simplifiée
+alter table administratif_osm.communefe_simplif rename column insee to codgeo ;
+alter table administratif_osm.communefe_simplif drop column if exists gid ; 
+alter table administratif_osm.communefe_simplif drop column if exists surf_ha ; 
+
+alter table administratif_osm.communefe_simplif add constraint pk_communefe_simplif
+	primary key (codgeo);
+	
+-- saisie METADATA table administratif_osm.communefe_simplif
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('codgeo','Code géographique de la commune - France entière','administratif_osm','communefe_simplif','OSM','import_data_commune', '08/11/19', 4),
+	('nom','nom de la commune (tel que figurant dans OpenStreetMap, si possible conforme aux règles de toponymie)','administratif_osm','communefe_simplif', 'OSM','import_data_commune', '08/11/19', 4),
+	('wikipedia','entrée wikipédia (code langue suivi du nom de l''article)','administratif_osm','communefe_simplif', 'OSM','import_data_commune', '08/11/19', 4),
+	('geom','Géométrie simplifiée en WGS84 de la commune - France entière','administratif_osm','communefe_simplif', 'OSM','import_data_commune', '08/11/19', 4)
+	;
+
+---------------------------
+---  IMPORT COMMUNE PRECISE OSM - limite administrative calée sur cadastre (FRANCE ENTIERE y compris DOM)
+\! shp2pgsql -W LATIN1 -s 4326 -dDI "Z:\DATA\BDD\OSM\communes-20190101\communes-20190101\communes-20190101.shp" administratif_osm.communefe   | psql  service=bddref
+
+-- Mise en forme table commune
+alter table administratif_osm.communefe rename column insee to codgeo ;
+alter table administratif_osm.communefe drop column if exists gid ;
+alter table administratif_osm.communefe drop column if exists surf_ha ; 
+
+alter table administratif_osm.communefe add constraint pk_communefe
+	primary key (codgeo);
+	
+-- saisie METADATA table administratif_osm.communefe
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('codgeo','Code géographique de la commune - France entière','administratif_osm','communefe','OSM','import_data_commune', '08/11/19', 5),
+	('nom','nom de la commune (tel que figurant dans OpenStreetMap, si possible conforme aux règles de toponymie)','administratif_osm','communefe', 'OSM','import_data_commune', '08/11/19', 5),
+	('wikipedia','entrée wikipédia (code langue suivi du nom de l''article)','administratif_osm','communefe', 'OSM','import_data_commune', '08/11/19', 5),
+	('geom','Géométrie précise en WGS84 de la commune - France entière','administratif_osm','communefe', 'OSM','import_data_commune', '08/11/19', 5)
+	;
+
+----------------
+---- CREATE TABLE COMMUNE PRECISE (FRANCE METROPOLITAINE + info INSEE)
+drop table if exists administratif_osm.commune ;
+create table administratif_osm.commune as
+	select com.*, osm.wikipedia, osm.geom
+	from administratif_osm.communefe osm
+	left join administratif.commune com on osm.codgeo = com.codgeo
+	where com.dep not in ('971','972','973','974','975','976') ;
+
+alter table administratif_osm.commune add constraint pk_commune
+	primary key (codgeo);
+create index gx_commune on  administratif_osm.commune using gist (geom);
+vacuum full analyse administratif_osm.commune; 
+
+--- reprojection des données de WGS84 (4326) vers L93 (2154)
+alter table administratif_osm.commune add column geom2 geometry ;
+update administratif_osm.commune set geom2 = ST_AsText(ST_Transform(ST_SetSRID(geom,4326),2154)) ;
+alter table administratif_osm.commune drop column if exists geom ; -- inutile car reprojection des données
+alter table administratif_osm.commune rename column geom2 to geom ;
+
+-- saisie METADATA table administratif_osm.commune
+-- delete from metadata.metachamp
+-- where sschema ='administratif_osm' and ttable ='commune' ;
+
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('codgeo','Code géographique de la commune - France métropolitaine','administratif_osm','commune','OSM','import_data_commune', '08/11/19', 6),
+	('libgeo','Libellé géographique de la commune)','administratif_osm','commune', 'INSEE','import_data_commune', '08/11/19', 6),
+	('epci','Code géographique de l''EPCI)','administratif_osm','commune', 'INSEE','import_data_commune', '08/11/19', 6),
+	('libepci','Libellé géographique de l''EPCI)','administratif_osm','commune', 'INSEE','import_data_commune', '08/11/19', 6),
+	('dep','Code géographique du département)','administratif_osm','commune', 'INSEE','import_data_commune', '08/11/19', 6),
+	('reg','Code géographique de la région)','administratif_osm','commune', 'INSEE','import_data_commune', '08/11/19', 6),
+	('wikipedia','entrée wikipédia (code langue suivi du nom de l''article)','administratif_osm','commune', 'OSM','import_data_commune', '08/11/19', 6),
+	('geom','Géométrie en L93 de la commune - France métropolitaine','administratif_osm','commune', 'OSM','import_data_commune', '08/11/19', 6)
+	;
+
+----------------
+---- CREATE TABLE COMMUNE SIMPLIFIEE (FRANCE METROPOLITAINE + info INSEE)
+drop table if exists administratif_osm.commune_simplif ;
+create table administratif_osm.commune_simplif as
+	select t2.*, t1.wikipedia, t1.geom
+	from administratif_osm.communefe_simplif t1
+	left join administratif.commune t2 on t1.codgeo = t2.codgeo
+	where t2.dep not in ('971','972','973','974','975','976') ;
+
+alter table administratif_osm.commune_simplif add constraint pk_commune_simplif
+	primary key (codgeo);
+create index gx_commune_simplif on  administratif_osm.commune_simplif using gist (geom);
+vacuum full analyse administratif_osm.commune_simplif; 
+
+--- reprojection des données de WGS84 (4326) vers L93 (2154)
+alter table administratif_osm.commune_simplif add column geom2 geometry ;
+update administratif_osm.commune_simplif set geom2 = ST_AsText(ST_Transform(ST_SetSRID(geom,4326),2154)) ;
+alter table administratif_osm.commune_simplif drop column if exists geom ; -- inutile car reprojection des données
+alter table administratif_osm.commune_simplif rename column geom2 to geom ;
+
+-- saisie METADATA table administratif_osm.commune_simplif
+-- delete from metadata.metachamp
+-- where sschema ='administratif_osm' and ttable ='commune_simplif' ;
+
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('codgeo','Code géographique de la commune - France métropolitaine','administratif_osm','commune_simplif','OSM','import_data_commune', '08/11/19', 6),
+	('libgeo','Libellé géographique de la commune)','administratif_osm','commune_simplif', 'INSEE','import_data_commune', '08/11/19', 6),
+	('epci','Code géographique de l''EPCI)','administratif_osm','commune_simplif', 'INSEE','import_data_commune', '08/11/19', 6),
+	('libepci','Libellé géographique de l''EPCI)','administratif_osm','commune_simplif', 'INSEE','import_data_commune', '08/11/19', 6),
+	('dep','Code géographique du département)','administratif_osm','commune_simplif', 'INSEE','import_data_commune', '08/11/19', 6),
+	('reg','Code géographique de la région)','administratif_osm','commune_simplif', 'INSEE','import_data_commune', '08/11/19', 6),
+	('wikipedia','entrée wikipédia (code langue suivi du nom de l''article)','administratif_osm','commune_simplif', 'OSM','import_data_commune', '08/11/19', 6),
+	('geom','Géométrie simplifiée en L93 de la commune - France métropolitaine','administratif_osm','commune_simplif', 'OSM','import_data_commune', '08/11/19', 6)
+	;
+
+----------------
+---- CREATE TABLE EPCI France métropolitaine
+--- création depuis la table des communes reprojetées
+drop table if exists administratif_osm.epci ;
+create table administratif_osm.epci as 
+select epci, st_union(geom) as geom
+from administratif_osm.commune
+group by epci ;
+
+alter table administratif_osm.epci add constraint pk_epci
+	primary key (epci);
+create index gx_epci on  administratif_osm.epci using gist (geom);
+vacuum full analyse administratif_osm.epci; 
+
+-- jointure avec table INSEE pour récupérer les infos liées aux EPCI
+alter table administratif_osm.epci add column libepci varchar (150) ;
+update administratif_osm.epci t4 set libepci = t3.libepci
+	from 
+		(select t1.epci, t2.libepci
+		from administratif_osm.epci t1
+		left join administratif.epci t2 on t1.epci = t2.epci) as t3
+	where t4.epci = t3.epci ;
+
+alter table administratif_osm.epci add column nature_epci varchar (3) ;
+update administratif_osm.epci t4 set nature_epci = t3.nature_epci
+	from 
+		(select t1.epci, t2.nature_epci
+		from administratif_osm.epci t1
+		left join administratif.epci t2 on t1.epci = t2.epci) as t3
+	where t4.epci = t3.epci ;
+	
+-- saisie METADATA table administratif_osm.epci
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('epci','Code géographique de l''EPCI)','administratif_osm','epci', 'INSEE','import_data_commune', '08/11/19', 7),
+	('libepci','Libellé géographique de l''EPCI)','administratif_osm','epci', 'INSEE','import_data_commune', '08/11/19', 7),
+	('nature_epci','Nature d''établissement public','administratif_osm','epci', 'INSEE','import_data_commune', '08/11/19', 7),
+	('geom','Géométrie de l''EPCI en L93 après fusion des limites communales précises - France métropolitaine','administratif_osm','epci', 'modaal script','import_data_commune', '08/11/19', 7)
+	;
+
+
+----------------
+---- CREATE TABLE DEPARTEMENT France métropolitaine
+--- création depuis la table des communes
+drop table if exists administratif_osm.departement ;
+create table administratif_osm.departement as 
+select dep, reg, st_union(geom) as geom
+from administratif_osm.commune
+group by dep, reg
+order by dep ;
+
+alter table administratif_osm.departement add constraint pk_departement
+	primary key (dep);
+create index gx_dep on  administratif_osm.departement using gist (geom);
+vacuum full analyse administratif_osm.departement; 
+
+-- jointure avec table INSEE pour récupérer les infos liées aux départements
+alter table administratif_osm.departement add column libdep varchar (150) ;
+update administratif_osm.departement t4 set libdep = t3.libelle
+	from 
+		(select t1.dep, t2.libelle
+		from administratif_osm.departement t1
+		left join administratif.departement t2 on t1.dep = t2.dep) as t3
+	where t4.dep = t3.dep ;
+
+alter table administratif_osm.departement add column cheflieu varchar (5) ;
+update administratif_osm.departement t4 set cheflieu = t3.cheflieu
+	from 
+		(select t1.dep, t2.cheflieu
+		from administratif_osm.departement t1
+		left join administratif.departement t2 on t1.dep = t2.dep) as t3
+	where t4.dep = t3.dep ;
+
+-- saisie METADATA table administratif_osm.departement
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('dep','Code géographique du département)','administratif_osm','departement', 'INSEE','import_data_commune', '08/11/19', 7),
+	('reg','Code géographique de la région)','administratif_osm','departement', 'INSEE','import_data_commune', '08/11/19', 7),
+	('libdep','Libellé géographique du département)','administratif_osm','departement', 'INSEE','import_data_commune', '08/11/19', 7),
+	('cheflieu','Code géographique de la commune chef-lieu','administratif_osm','departement', 'INSEE','import_data_commune', '08/11/19', 7),
+	('geom','Géométrie du département en L93 après fusion des limites communales précises - France métropolitaine','administratif_osm','departement', 'modaal script','import_data_commune', '08/11/19', 7)
+	;
+
+----------------
+---- CREATE TABLE REGION France métropolitaine
+--- création depuis la table des départements
+drop table if exists administratif_osm.region ;
+create table administratif_osm.region as 
+select reg, st_union(geom) as geom
+from administratif_osm.departement
+group by reg
+order by reg ;
+
+alter table administratif_osm.region add constraint pk_region
+	primary key (reg);
+create index gx_reg on  administratif_osm.region using gist (geom);
+vacuum full analyse administratif_osm.region; 
+
+-- jointure avec table INSEE pour récupérer les infos liées aux régions
+alter table administratif_osm.region add column libreg varchar (150) ;
+update administratif_osm.region t4 set libreg = t3.libelle
+	from 
+		(select t1.reg, t2.libelle
+		from administratif_osm.region t1
+		left join administratif.region t2 on t1.reg = t2.reg) as t3
+	where t4.reg = t3.reg ;
+
+alter table administratif_osm.region add column cheflieu varchar (5) ;
+update administratif_osm.region t4 set cheflieu = t3.cheflieu
+	from 
+		(select t1.reg, t2.cheflieu
+		from administratif_osm.region t1
+		left join administratif.region t2 on t1.reg = t2.reg) as t3
+	where t4.reg = t3.reg ;
+
+-- saisie METADATA table administratif_osm.region
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('reg','Code géographique de la région)','administratif_osm','region', 'INSEE','import_data_commune', '08/11/19', 7),
+	('libreg','Libellé géographique de la région)','administratif_osm','region', 'INSEE','import_data_commune', '08/11/19', 7),
+	('cheflieu','Code géographique de la commune chef-lieu','administratif_osm','region', 'INSEE','import_data_commune', '08/11/19', 7),
+	('geom','Géométrie de la région en L93 après fusion des limites départementales précises - France métropolitaine','administratif_osm','region', 'modaal script','import_data_commune', '08/11/19', 7)
+	;
+
+select current_timestamp ;  -- heure fin script

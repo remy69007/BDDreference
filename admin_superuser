@@ -1,0 +1,21 @@
+-----
+-- Auteur : Rémy
+-- Date création : 21/01/20
+-- Date modif :  --
+-- Objectif : script de définition de l'administration système
+------
+
+
+-- Connexion serveur postgres
+psql -p 5433 -U postgres
+
+-- Creation superuser pour l'admin des bases postgres.
+create user modaal_dba with password 'Moda@l-dba69!' ;
+alter user modaal_dba with superuser ;
+
+-- Creation base référentiel
+-- trouver ligne commande pour créer la BDD en se basant sur le template contenant les extensions spatiales --> postgis_30_sample !!
+create database "bddreference" ;
+create extension postgis ;
+
+

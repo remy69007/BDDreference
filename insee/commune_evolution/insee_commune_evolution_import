@@ -1,0 +1,81 @@
+-------------------------- 
+-- Auteur : RMA
+-- Crée le : 05/11/19
+
+-- MISSION  : Capitalisation BBD reference
+-- Script pour intégration du fichier INSEE de fusion des codes communes
+----------------------------------------
+
+
+\set ON_ERROR_STOP on
+\set chemin 'Z:\DATA\BDD\INSEE\EPCI\INPUT'  -- chemin accès des csv bug à corriger
+\set version '2019' -- à mettre à jour pour versionning des données
+
+
+---------------------------
+--IMPORT DATA 
+drop table if exists administratif.communeevol;
+create table administratif.communeevol
+(
+    codgeo_ini varchar(6),
+    codgeo varchar(6),
+	libgeo varchar(180),
+	primary key (codgeo_ini,codgeo)
+) ;
+
+-- import du csv logement autorisé
+-- fichier brute corrigé manuellement car 2 communes sans codgeo malgré existance codgeo_ini
+copy administratif.communeevol
+    from 'Z:\DATA\BDD\INSEE\EPCI\INPUT\table_passage_geo2003_geo2019.csv' with delimiter  ';'  csv header  ;
+
+	
+-- MISE EN FORME
+-- récupérer le "0" des codes insee des communes
+update administratif.communeevol a set codgeo_ini = concat('0',a.codgeo_ini) 
+	where length(a.codgeo_ini)=4 ;
+
+update administratif.communeevol a set codgeo = concat('0',a.codgeo) 
+	where length(a.codgeo)=4 ;
+
+
+-- détermination de l'origine du codgeo
+alter table administratif.communeevol drop column if exists codgeofrom ;
+alter table administratif.communeevol add column codgeofrom varchar(11);
+-- cas des fusions de communes
+update administratif.communeevol a set codgeofrom = 'fusion' 
+	where codgeo in
+		(select codgeo
+		from (
+			select codgeo, count(codgeo) as doublon
+			from administratif.communeevol
+			group by codgeo) as t1
+		where doublon >1
+		) ;
+
+-- cas des disparition de communes
+update administratif.communeevol a set codgeofrom = 'disparition' 
+	where libgeo = 'erreur insee' ;
+	
+-- cas des non changements
+update administratif.communeevol a set codgeofrom = 'identique' 
+	where codgeo_ini = codgeo and codgeofrom is null ;
+
+
+---- VERSIONNING
+-- ajout champ pour versionner la données insee
+alter table administratif.communeevol drop column if exists codgeov ;
+alter table administratif.communeevol add column codgeov varchar(4) ;
+update administratif.communeevol set codgeov = :version ;  -- maj à chaque import du fichier.
+
+-- saisie METADATA table administratif.communeevol
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('codgeo_ini','Code géographique ayant existé depuis 01/01/2003','administratif','communeevol','INSEE','insee_commune_evolution_import', '13/11/19', 1),
+	('codgeo','Code géographique au 01/01/2019','administratif','communeevol', 'INSEE','insee_commune_evolution_import', '13/11/19', 1),
+	('libgeo','Libellé géographique au 01/01/2019','administratif','communeevol', 'INSEE','insee_commune_evolution_import', '13/11/19', 1),
+	('codgeofrom','mentionne l''évolution historique du codgeo de la commune','administratif','communeevol','modaal script','insee_commune_evolution_import', '13/11/19', 1),
+	('codgeov','mentionne l''année de validité du codgeo','administratif','communeevol', 'modaal script','insee_commune_evolution_import', '13/11/19', 1)
+	;
+
+
+

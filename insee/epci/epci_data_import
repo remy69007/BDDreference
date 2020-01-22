@@ -1,0 +1,143 @@
+-------------------------- 
+-- Auteur : RMA
+-- Crée le : 05/11/19
+
+-- MISSION  : Capitalisation
+-- IMPORT BDD REFERENCE : import INSEE data liée aux EPCI
+----------------------------------------
+
+\set ON_ERROR_STOP on
+\set chemin 'Z:\DATA\BDD\INSEE\EPCI\INPUT'  -- chemin d'accès des csv bug à corriger
+
+create schema if not exists administratif ;
+
+-- import commune
+drop table if exists administratif.commune;
+create table administratif.commune
+(
+    codgeo varchar(6),
+    libgeo varchar(150),
+	epci varchar(10),
+	libepci varchar(150),
+	dep varchar(3),
+	reg varchar(2),
+	primary key (codgeo)
+) ;
+
+create index ix_epci on  administratif.commune using btree (epci);
+
+copy administratif.commune
+    from 'Z:\DATA\BDD\INSEE\EPCI\INPUT\communalite2019.csv' with delimiter  ';'  csv header ;
+	
+-- saisie metadata table administratif.commune
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('codgeo','Code géographique de la commune au 01/01/2019','administratif','commune', 'INSEE','import_data_epci', '13/11/19', 2),
+	('libgeo','Libellé géographique de la commune','administratif','commune', 'INSEE','import_data_epci', '13/11/19', 2),
+	('epci','Code géographique de l''établissement public à fiscalité propre ou métropole','administratif','commune','INSEE','import_data_epci', '13/11/19', 2),
+	('libepci','Libellé de l''EPCI ou métropole','administratif','commune', 'INSEE','import_data_epci', '13/11/19', 2),
+	('dep','Code géographique du département','administratif','commune', 'INSEE','import_data_epci', '13/11/19', 2),
+	('reg','Code géographique de la région','administratif','commune', 'INSEE','import_data_epci', '13/11/19', 2)
+	;
+
+----------------------------
+-- IMPORT INTERCOMMUNALITE
+drop table if exists administratif.epci;
+create table administratif.epci
+(
+    epci varchar(10),
+	libepci varchar(150),
+	nature_epci varchar(3),
+	nb_com integer,
+	primary key (epci)
+) ;
+
+copy administratif.epci
+    from 'Z:\DATA\BDD\INSEE\EPCI\INPUT\intercommunalite2019.csv' with delimiter  ';'  csv header ;
+	
+-- saisie METADATA table administratif.epci
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('epci','Code géographique de l''établissement public à fiscalité propre ou métropole','administratif','epci','INSEE','import_data_epci', '13/11/19', 2),
+	('libepci','Libellé de l''EPCI ou métropole','administratif','epci', 'INSEE','import_data_epci', '13/11/19', 2),
+	('nature_epci','Nature d''établissement public','administratif','epci', 'INSEE','import_data_epci', '13/11/19', 2),
+	('nb_com','Nombre de communes contenues dans l''objet géographique','administratif','epci', 'INSEE','import_data_epci', '13/11/19', 2)
+	;
+
+----------------------	
+-- IMPORT DEPARTEMENT
+drop table if exists administratif.departement;
+create table administratif.departement
+(
+    dep varchar(3),
+	reg varchar(2),
+	cheflieu varchar(5),
+	tncc varchar(1),
+	ncc varchar(200),
+	nccenr varchar(200),
+	libelle varchar(200),
+	primary key (dep)
+) ;
+
+copy administratif.departement
+    from 'Z:\DATA\BDD\INSEE\EPCI\INPUT\departement2019.csv' with delimiter  ';'  csv header ;
+	
+create index ix_cheflieu on  administratif.departement using btree (cheflieu);
+
+-- correction des "0" perdus dans les codes départements
+update administratif.departement t1 set dep = concat('0',dep) 
+	where length(t1.dep) = 1 ;
+
+update administratif.departement t1 set cheflieu = concat('0',cheflieu) 
+	where length(t1.cheflieu) = 4 ;
+	
+-- saisie METADATA table administratif.departement
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('dep','Code géographique du département','administratif','departement','INSEE','import_data_epci', '13/11/19', 3),
+	('reg','Code géographique de la région','administratif','departement', 'INSEE','import_data_epci', '13/11/19', 3),
+	('cheflieu','Code géographique de la commune chef-lieu','administratif','departement', 'INSEE','import_data_epci', '13/11/19', 3),
+	('tncc','Type de nom en clair','administratif','departement', 'INSEE','import_data_epci', '13/11/19', 3),
+	('ncc','Nom en clair (majuscules)','administratif','departement', 'INSEE','import_data_epci', '13/11/19', 3),
+	('nccenr','Nom en clair (typographie riche)','administratif','departement', 'INSEE','import_data_epci', '13/11/19', 3),
+	('libelle','Nom en clair (typographie riche) avec article','administratif','departement', 'INSEE','import_data_epci', '13/11/19', 3)
+	;
+
+----------------	
+-- IMPORT REGION
+drop table if exists administratif.region;
+create table administratif.region
+(
+	reg varchar(2),
+	cheflieu varchar(5),
+	tncc varchar(1),
+	ncc varchar(200),
+	nccenr varchar(200),
+	libelle varchar(200),
+	primary key (reg)
+) ;
+
+copy administratif.region
+    from 'Z:\DATA\BDD\INSEE\EPCI\INPUT\region2019.csv' with delimiter  ';'  csv header ;
+	
+create index ix_cheflieu on  administratif.region using btree (cheflieu);
+
+-- correction des "0" perdus dans les codes régions et codes communes
+update administratif.region t1 set reg = concat('0',reg) 
+	where length(t1.reg) = 1 ;
+
+update administratif.region t1 set cheflieu = concat('0',cheflieu) 
+	where length(t1.cheflieu) = 4 ;
+	
+-- saisie metadata table administratif.region
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('reg','Code géographique de la région','administratif','region', 'INSEE','import_data_epci', '13/11/19', 3),
+	('cheflieu','Code géographique de la commune chef-lieu','administratif','region', 'INSEE','import_data_epci', '13/11/19', 3),
+	('tncc','Type de nom en clair','administratif','region', 'INSEE','import_data_epci', '13/11/19', 3),
+	('ncc','Nom en clair (majuscules)','administratif','region', 'INSEE','import_data_epci', '13/11/19', 3),
+	('nccenr','Nom en clair (typographie riche)','administratif','region', 'INSEE','import_data_epci', '13/11/19', 3),
+	('libelle','Nom en clair (typographie riche) avec article','administratif','region', 'INSEE','import_data_epci', '13/11/19', 3)
+	;
+
+

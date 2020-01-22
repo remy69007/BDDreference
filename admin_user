@@ -1,0 +1,40 @@
+-----
+-- Auteur : Rémy
+-- Date création : 21/01/20
+-- Date modif :  --
+-- Objectif : script de création des user
+------
+
+\set ON_ERROR_STOP on
+
+
+-- CREATION GROUP
+-- Admin (non superuser) qui a tout les droits d'admin
+create group gpadmin ;
+
+-- Geomatique : a droit de select/insert/update/delete. Permet d'administrer de la data. Pas de droit sur les schéma.
+create group geomatique ;
+
+-- Saisie : a droit de select/insert/update. Pas de droit de delete
+create group saisie ;
+
+-- Consultation : a droit de select pour consultation des données. Pas de update/insert/delete
+create group consultation ;
+
+--CREATE USER
+create user remy with password 'Remy38540!' ;
+create user segolene with password 'ViveLesFriches80!' ;
+create user eva with password 'ViveLaNormandie76!' ;
+create user claire with password 'LoisirCreatif69!' ;
+create user edouard with password 'Spain69007!' ;
+
+--AFFECTATION DANS LES GROUPES
+grant gpadmin to remy ;
+grant geomatique to segolene ;
+grant geomatique to eva ;
+grant geomatique to edouard ;
+grant consultation to claire ;
+
+-- DEFINITION DES DROITS
+grant all privileges on database bddreference to gpadmin ;
+grant pg_read_server_files to gpadmin ;   -- droits de lecture normalement uniquement pour le superadmin. nécessaire pour \copy

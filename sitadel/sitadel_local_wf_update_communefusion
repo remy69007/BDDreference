@@ -1,0 +1,134 @@
+-------------------------- 
+-- Auteur : RMA
+-- Crée le : 05/11/19
+
+-- MISSION  : Capitalisation data SITADEL
+-- Recalcul des données SITADEL en tenant compte de la fusion des communes
+----------------------------------------
+
+\set ON_ERROR_STOP on
+
+
+-- TABLE LOCAL AUTORISE
+-- creation table temporaire apres jointure
+drop table if exists sitadel.localtemp ;
+create table sitadel.localtemp as
+select t1.*, t2.codgeo_ini, t2.codgeo, t2.libgeo, t2.codgeofrom
+from sitadel.localautorise t1
+left join administratif.communeevol t2 on t1.idgeo = t2.codgeo_ini 
+where t2.codgeo_ini is not null ;
+
+
+-- creation table finale contenant les data sommées en fonction des communes fusionnées
+drop table if exists sitadel.localautorisev2 ;
+create table sitadel.localautorisev2 as 
+select codgeo, annee,
+	sum(hotel_surf) as hotel_surf, 
+	sum(commerce_surf) as commerce_surf,
+	sum(bureau_surf) as bureau_surf,
+	sum(artisanat_surf) as artisanat_surf,
+	sum(indus_surf) as indus_surf,
+	sum(agri_surf) as agri_surf,
+	sum(entrepot_surf) as entrepot_surf,
+	sum(speducation_surf) as speducation_surf,
+	sum(spsocial_surf) as spsocial_surf,
+	sum(sptpt_surf) as sptpt_surf,
+	sum(spouvrage_surf) as spouvrage_surf,
+	sum(spsante_surf) as spsante_surf,
+	sum(sploisir_surf) as sploisir_surf,
+	sum(totalsp_surf) as totalsp_surf,
+	sum(total_surf) as total_surf,
+	codgeofrom
+from sitadel.localtemp
+group by codgeo, annee, codgeofrom
+order by codgeo, annee ;
+
+alter table sitadel.localautorisev2 add constraint localautorisev2_pkey
+	primary key (codgeo, annee);
+
+drop table if exists sitadel.localtemp ;
+
+-- insertion métadata table sitadel.localautorisev2
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('codgeo','code géographique de l''entité','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('annee','Année en date réelle des données sitadel','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('hotel_surf','Surface autorisée en m² de locaux d''hébergement hôtelier après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('commerce_surf','Surface autorisée en m² de locaux de commerce après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('bureau_surf','Surface autorisée en m² de locaux de bureaux après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('artisanat_surf','Surface autorisée en m² de locaux d''artisanat après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('indus_surf','Surface autorisée en m² de locaux industriels après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('agri_surf','Surface autorisée en m² de locaux agricoles après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('entrepot_surf','Surface autorisée en m² d''entrepôts après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('speducation_surf','Surface autorisée en m² de locaux de service public - enseignement-recherche après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('spsocial_surf','Surface autorisée en m² de locaux de service public - action sociale après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('sptpt_surf','Surface autorisée en m² de locaux de service public - transport après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('spouvrage_surf','Surface autorisée en m² de locaux de service public – ouvrages spéciaux après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('spsante_surf','Surface autorisée en m² de locaux de service public - santé après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('sploisir_surf','Surface autorisée en m² de locaux de service public – culture loisirs après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('totalsp_surf','Surface totale autorisée en m² de locaux de service public après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('total_surf','Total surface autorisée de local en m² après fusion de communes','sitadel','localautorisev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('codgeofrom','mentionne l''évolution historique du codgeo de la commune','sitadel','localautorisev2','modaal script','insee_commune_evolution_import', '13/11/19', 1)
+	;
+
+-- TABLE LOCAL COMMENCE
+-- creation table temporaire apres jointure
+drop table if exists sitadel.localtemp ;
+create table sitadel.localtemp as
+select t1.*, t2.codgeo_ini, t2.codgeo, t2.libgeo, t2.codgeofrom
+from sitadel.localcommence t1
+left join administratif.communeevol t2 on t1.idgeo = t2.codgeo_ini 
+where t2.codgeo_ini is not null ;
+
+
+-- creation table finale contenant les data sommées en fonction des communes fusionnées
+drop table if exists sitadel.localcommencev2 ;
+create table sitadel.localcommencev2 as 
+select codgeo, annee,
+	sum(hotel_surf) as hotel_surf, 
+	sum(commerce_surf) as commerce_surf,
+	sum(bureau_surf) as bureau_surf,
+	sum(artisanat_surf) as artisanat_surf,
+	sum(indus_surf) as indus_surf,
+	sum(agri_surf) as agri_surf,
+	sum(entrepot_surf) as entrepot_surf,
+	sum(speducation_surf) as speducation_surf,
+	sum(spsocial_surf) as spsocial_surf,
+	sum(sptpt_surf) as sptpt_surf,
+	sum(spouvrage_surf) as spouvrage_surf,
+	sum(spsante_surf) as spsante_surf,
+	sum(sploisir_surf) as sploisir_surf,
+	sum(totalsp_surf) as totalsp_surf,
+	sum(total_surf) as total_surf,
+	codgeofrom
+from sitadel.localtemp
+group by codgeo, annee, codgeofrom
+order by codgeo, annee ;
+
+alter table sitadel.localcommencev2 add constraint localcommencev2_pkey
+	primary key (codgeo, annee);
+
+drop table if exists sitadel.localtemp ;
+
+-- insertion métadata table sitadel.localcommencev2
+insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
+	values 
+	('codgeo','code géographique de l''entité','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('annee','Année en date réelle des données sitadel','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('hotel_surf','Surface commencée en m² de locaux d''hébergement hôtelier après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('commerce_surf','Surface commencée en m² de locaux de commerce après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('bureau_surf','Surface commencée en m² de locaux de bureaux après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('artisanat_surf','Surface commencée en m² de locaux d''artisanat après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('indus_surf','Surface commencée en m² de locaux industriels après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('agri_surf','Surface commencée en m² de locaux agricoles après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('entrepot_surf','Surface commencée en m² d''entrepôts après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('speducation_surf','Surface commencée en m² de locaux de service public - enseignement-recherche après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('spsocial_surf','Surface commencée en m² de locaux de service public - action sociale après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('sptpt_surf','Surface commencée en m² de locaux de service public - transport après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('spouvrage_surf','Surface commencée en m² de locaux de service public – ouvrages spéciaux après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('spsante_surf','Surface commencée en m² de locaux de service public - santé après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('sploisir_surf','Surface commencée en m² de locaux de service public – culture loisirs après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('totalsp_surf','Surface totale commencée en m² de locaux de service public après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('total_surf','Total surface commencée de local en m² après fusion de communes','sitadel','localcommencev2','modaal script','sitadel_local_wf_update_communefusion', '13/11/19', 1),
+	('codgeofrom','mentionne l''évolution historique du codgeo de la commune','sitadel','localcommencev2','modaal script','insee_commune_evolution_import', '13/11/19', 1)
+	;
