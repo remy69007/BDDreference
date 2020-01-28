@@ -22,6 +22,7 @@ create schema if not exists administratif_osm ;
 ---  IMPORT COMMUNE SIMPLIFIEE OSM (FRANCE ENTIERE y compris DOM)
 \! shp2pgsql -W LATIN1 -s 4326 -dDI "Z:\DATA\BDD\OSM\communes-20190101\communes-20190101_simplif\shp\communes-20190101.shp" administratif_osm.communefe_simplif  | psql service=bddref
 
+
 -- mise en forme table commune avec limite simplifiée
 alter table administratif_osm.communefe_simplif rename column insee to codgeo ;
 alter table administratif_osm.communefe_simplif drop column if exists gid ; 
@@ -62,6 +63,8 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 
 ----------------
 ---- CREATE TABLE COMMUNE PRECISE (FRANCE METROPOLITAINE + info INSEE)
+-- factoring : prendre en compte la non correspondance codgeo entre osm et insee pour faire une table d'erreur
+
 drop table if exists administratif_osm.commune ;
 create table administratif_osm.commune as
 	select com.*, osm.wikipedia, osm.geom
@@ -75,10 +78,14 @@ create index gx_commune on  administratif_osm.commune using gist (geom);
 vacuum full analyse administratif_osm.commune; 
 
 --- reprojection des données de WGS84 (4326) vers L93 (2154)
-alter table administratif_osm.commune add column geom2 geometry ;
-update administratif_osm.commune set geom2 = ST_AsText(ST_Transform(ST_SetSRID(geom,4326),2154)) ;
-alter table administratif_osm.commune drop column if exists geom ; -- inutile car reprojection des données
-alter table administratif_osm.commune rename column geom2 to geom ;
+update administratif_osm.commune set geom = ST_AsText(ST_Transform(ST_SetSRID(geom,4326),2154)) ;  -- reprojection 2346 to 2154
+select UpdateGeometrySRID ('administratif_osm','commune', 'geom', 2154);  -- maj srid 2154
+
+-- code ci-dessous alternative à UpdateGeometrySRID
+--alter table administratif_osm.commune alter column geom type geometry(MultiPolygon,2154) 
+--using ST_Transform(ST_SetSRID(geom,2154),2154); 
+
+
 
 -- saisie METADATA table administratif_osm.commune
 -- delete from metadata.metachamp
@@ -98,6 +105,8 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 
 ----------------
 ---- CREATE TABLE COMMUNE SIMPLIFIEE (FRANCE METROPOLITAINE + info INSEE)
+-- factoring : prendre en compte la non correspondance codgeo entre osm et insee pour faire une table d'erreur
+
 drop table if exists administratif_osm.commune_simplif ;
 create table administratif_osm.commune_simplif as
 	select t2.*, t1.wikipedia, t1.geom
@@ -111,10 +120,12 @@ create index gx_commune_simplif on  administratif_osm.commune_simplif using gist
 vacuum full analyse administratif_osm.commune_simplif; 
 
 --- reprojection des données de WGS84 (4326) vers L93 (2154)
-alter table administratif_osm.commune_simplif add column geom2 geometry ;
-update administratif_osm.commune_simplif set geom2 = ST_AsText(ST_Transform(ST_SetSRID(geom,4326),2154)) ;
-alter table administratif_osm.commune_simplif drop column if exists geom ; -- inutile car reprojection des données
-alter table administratif_osm.commune_simplif rename column geom2 to geom ;
+update administratif_osm.commune_simplif set geom = ST_AsText(ST_Transform(ST_SetSRID(geom,4326),2154)) ;  -- reprojection 2346 to 2154
+select UpdateGeometrySRID ('administratif_osm','commune_simplif', 'geom', 2154);  -- maj srid 2154
+
+-- code ci-dessous alternative à UpdateGeometrySRID
+--alter table administratif_osm.commune_simplif alter column geom type geometry(MultiPolygon,2154) 
+--using ST_Transform(ST_SetSRID(geom,2154),2154); 
 
 -- saisie METADATA table administratif_osm.commune_simplif
 -- delete from metadata.metachamp

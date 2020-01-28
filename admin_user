@@ -27,6 +27,7 @@ create user segolene with password 'ViveLesFriches80!' ;
 create user eva with password 'ViveLaNormandie76!' ;
 create user claire with password 'LoisirCreatif69!' ;
 create user edouard with password 'Spain69007!' ;
+create user sig with password 'Geonum!' ;  -- profil générique de géomaticien pour mes tests d'admin.
 
 --AFFECTATION DANS LES GROUPES
 grant gpadmin to remy ;
@@ -34,7 +35,21 @@ grant geomatique to segolene ;
 grant geomatique to eva ;
 grant geomatique to edouard ;
 grant consultation to claire ;
+grant geomatique to sig ;
 
 -- DEFINITION DES DROITS
 grant all privileges on database bddreference to gpadmin ;
 grant pg_read_server_files to gpadmin ;   -- droits de lecture normalement uniquement pour le superadmin. nécessaire pour \copy
+grant pg_read_server_files to geomatique ; 
+
+grant usage on schema administratif to geomatique ; -- autorisation pour voir le schema
+grant select on all tables in schema administratif to geomatique ;  -- autorisation pour select sur les tables du schema
+
+grant usage on schema administratif_osm to geomatique ;
+grant select on all tables in schema administratif_osm to geomatique ;
+
+grant usage on schema metadata to geomatique ;
+grant select on all tables in schema metadata to geomatique ;
+
+grant usage on schema sitadel to geomatique ;
+grant select on all tables in schema sitadel to geomatique ;
