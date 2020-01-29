@@ -30,6 +30,7 @@ copy administratif.commune
     from 'Z:\DATA\BDD\INSEE\EPCI\INPUT\communalite2019.csv' with delimiter  ';'  csv header ;
 	
 -- saisie metadata table administratif.commune
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('codgeo','Code géographique de la commune au 01/01/2019','administratif','commune', 'INSEE','import_data_epci', '13/11/19', 2),
@@ -39,6 +40,7 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('dep','Code géographique du département','administratif','commune', 'INSEE','import_data_epci', '13/11/19', 2),
 	('reg','Code géographique de la région','administratif','commune', 'INSEE','import_data_epci', '13/11/19', 2)
 	;
+set client_encoding = 'WIN1252' ;
 
 ----------------------------
 -- IMPORT INTERCOMMUNALITE
@@ -56,6 +58,7 @@ copy administratif.epci
     from 'Z:\DATA\BDD\INSEE\EPCI\INPUT\intercommunalite2019.csv' with delimiter  ';'  csv header ;
 	
 -- saisie METADATA table administratif.epci
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('epci','Code géographique de l''établissement public à fiscalité propre ou métropole','administratif','epci','INSEE','import_data_epci', '13/11/19', 2),
@@ -63,7 +66,7 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('nature_epci','Nature d''établissement public','administratif','epci', 'INSEE','import_data_epci', '13/11/19', 2),
 	('nb_com','Nombre de communes contenues dans l''objet géographique','administratif','epci', 'INSEE','import_data_epci', '13/11/19', 2)
 	;
-
+set client_encoding = 'WIN1252' ;
 ----------------------	
 -- IMPORT DEPARTEMENT
 drop table if exists administratif.departement;
@@ -82,7 +85,7 @@ create table administratif.departement
 copy administratif.departement
     from 'Z:\DATA\BDD\INSEE\EPCI\INPUT\departement2019.csv' with delimiter  ';'  csv header ;
 	
-create index ix_cheflieu on  administratif.departement using btree (cheflieu);
+create index ix_cheflieud on  administratif.departement using btree (cheflieu);
 
 -- correction des "0" perdus dans les codes départements
 update administratif.departement t1 set dep = concat('0',dep) 
@@ -92,6 +95,7 @@ update administratif.departement t1 set cheflieu = concat('0',cheflieu)
 	where length(t1.cheflieu) = 4 ;
 	
 -- saisie METADATA table administratif.departement
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('dep','Code géographique du département','administratif','departement','INSEE','import_data_epci', '13/11/19', 3),
@@ -102,7 +106,7 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('nccenr','Nom en clair (typographie riche)','administratif','departement', 'INSEE','import_data_epci', '13/11/19', 3),
 	('libelle','Nom en clair (typographie riche) avec article','administratif','departement', 'INSEE','import_data_epci', '13/11/19', 3)
 	;
-
+set client_encoding = 'WIN1252' ;
 ----------------	
 -- IMPORT REGION
 drop table if exists administratif.region;
@@ -120,7 +124,7 @@ create table administratif.region
 copy administratif.region
     from 'Z:\DATA\BDD\INSEE\EPCI\INPUT\region2019.csv' with delimiter  ';'  csv header ;
 	
-create index ix_cheflieu on  administratif.region using btree (cheflieu);
+create index ix_cheflieur on  administratif.region using btree (cheflieu);
 
 -- correction des "0" perdus dans les codes régions et codes communes
 update administratif.region t1 set reg = concat('0',reg) 
@@ -130,6 +134,7 @@ update administratif.region t1 set cheflieu = concat('0',cheflieu)
 	where length(t1.cheflieu) = 4 ;
 	
 -- saisie metadata table administratif.region
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('reg','Code géographique de la région','administratif','region', 'INSEE','import_data_epci', '13/11/19', 3),
@@ -139,5 +144,5 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('nccenr','Nom en clair (typographie riche)','administratif','region', 'INSEE','import_data_epci', '13/11/19', 3),
 	('libelle','Nom en clair (typographie riche) avec article','administratif','region', 'INSEE','import_data_epci', '13/11/19', 3)
 	;
-
+set client_encoding = 'WIN1252' ;
 

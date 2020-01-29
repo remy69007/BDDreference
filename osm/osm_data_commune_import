@@ -14,13 +14,14 @@
 ---------------------------
 
 \set ON_ERROR_STOP on
+\set myservice 'test'  -- factoring : mettre en variable le service de fichier
 
 select current_timestamp ;  -- heure debut script
 create schema if not exists administratif_osm ;
 
 --------------------------
 ---  IMPORT COMMUNE SIMPLIFIEE OSM (FRANCE ENTIERE y compris DOM)
-\! shp2pgsql -W LATIN1 -s 4326 -dDI "Z:\DATA\BDD\OSM\communes-20190101\communes-20190101_simplif\shp\communes-20190101.shp" administratif_osm.communefe_simplif  | psql service=bddref
+\! shp2pgsql -W UTF-8 -s 4326 -dDI "Z:\DATA\BDD\OSM\communes-20190101\communes-20190101_simplif\shp\communes-20190101.shp" administratif_osm.communefe_simplif  | psql service=bddref
 
 
 -- mise en forme table commune avec limite simplifiée
@@ -32,6 +33,7 @@ alter table administratif_osm.communefe_simplif add constraint pk_communefe_simp
 	primary key (codgeo);
 	
 -- saisie METADATA table administratif_osm.communefe_simplif
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('codgeo','Code géographique de la commune - France entière','administratif_osm','communefe_simplif','OSM','import_data_commune', '08/11/19', 4),
@@ -39,10 +41,12 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('wikipedia','entrée wikipédia (code langue suivi du nom de l''article)','administratif_osm','communefe_simplif', 'OSM','import_data_commune', '08/11/19', 4),
 	('geom','Géométrie simplifiée en WGS84 de la commune - France entière','administratif_osm','communefe_simplif', 'OSM','import_data_commune', '08/11/19', 4)
 	;
+set client_encoding = 'WIN1252' ;
+
 
 ---------------------------
 ---  IMPORT COMMUNE PRECISE OSM - limite administrative calée sur cadastre (FRANCE ENTIERE y compris DOM)
-\! shp2pgsql -W LATIN1 -s 4326 -dDI "Z:\DATA\BDD\OSM\communes-20190101\communes-20190101\communes-20190101.shp" administratif_osm.communefe   | psql  service=bddref
+\! shp2pgsql -W UTF-8 -s 4326 -dDI "Z:\DATA\BDD\OSM\communes-20190101\communes-20190101\communes-20190101.shp" administratif_osm.communefe   | psql  service=bddref
 
 -- Mise en forme table commune
 alter table administratif_osm.communefe rename column insee to codgeo ;
@@ -53,6 +57,7 @@ alter table administratif_osm.communefe add constraint pk_communefe
 	primary key (codgeo);
 	
 -- saisie METADATA table administratif_osm.communefe
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('codgeo','Code géographique de la commune - France entière','administratif_osm','communefe','OSM','import_data_commune', '08/11/19', 5),
@@ -60,7 +65,7 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('wikipedia','entrée wikipédia (code langue suivi du nom de l''article)','administratif_osm','communefe', 'OSM','import_data_commune', '08/11/19', 5),
 	('geom','Géométrie précise en WGS84 de la commune - France entière','administratif_osm','communefe', 'OSM','import_data_commune', '08/11/19', 5)
 	;
-
+set client_encoding = 'WIN1252' ;
 ----------------
 ---- CREATE TABLE COMMUNE PRECISE (FRANCE METROPOLITAINE + info INSEE)
 -- factoring : prendre en compte la non correspondance codgeo entre osm et insee pour faire une table d'erreur
@@ -78,8 +83,12 @@ create index gx_commune on  administratif_osm.commune using gist (geom);
 vacuum full analyse administratif_osm.commune; 
 
 --- reprojection des données de WGS84 (4326) vers L93 (2154)
-update administratif_osm.commune set geom = ST_AsText(ST_Transform(ST_SetSRID(geom,4326),2154)) ;  -- reprojection 2346 to 2154
+alter table administratif_osm.commune add column geom2 geometry ;
+update administratif_osm.commune set geom2 = ST_AsText(ST_Transform(ST_SetSRID(geom,4326),2154)) ;  -- reprojection 2346 to 2154
+alter table administratif_osm.commune drop column geom ; -- inutile car reprojection des données
+alter table administratif_osm.commune rename column geom2 to geom ;
 select UpdateGeometrySRID ('administratif_osm','commune', 'geom', 2154);  -- maj srid 2154
+
 
 -- code ci-dessous alternative à UpdateGeometrySRID
 --alter table administratif_osm.commune alter column geom type geometry(MultiPolygon,2154) 
@@ -90,7 +99,7 @@ select UpdateGeometrySRID ('administratif_osm','commune', 'geom', 2154);  -- maj
 -- saisie METADATA table administratif_osm.commune
 -- delete from metadata.metachamp
 -- where sschema ='administratif_osm' and ttable ='commune' ;
-
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('codgeo','Code géographique de la commune - France métropolitaine','administratif_osm','commune','OSM','import_data_commune', '08/11/19', 6),
@@ -102,7 +111,7 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('wikipedia','entrée wikipédia (code langue suivi du nom de l''article)','administratif_osm','commune', 'OSM','import_data_commune', '08/11/19', 6),
 	('geom','Géométrie en L93 de la commune - France métropolitaine','administratif_osm','commune', 'OSM','import_data_commune', '08/11/19', 6)
 	;
-
+set client_encoding = 'WIN1252' ;
 ----------------
 ---- CREATE TABLE COMMUNE SIMPLIFIEE (FRANCE METROPOLITAINE + info INSEE)
 -- factoring : prendre en compte la non correspondance codgeo entre osm et insee pour faire une table d'erreur
@@ -120,7 +129,10 @@ create index gx_commune_simplif on  administratif_osm.commune_simplif using gist
 vacuum full analyse administratif_osm.commune_simplif; 
 
 --- reprojection des données de WGS84 (4326) vers L93 (2154)
-update administratif_osm.commune_simplif set geom = ST_AsText(ST_Transform(ST_SetSRID(geom,4326),2154)) ;  -- reprojection 2346 to 2154
+alter table administratif_osm.commune_simplif add column geom2 geometry ;
+update administratif_osm.commune_simplif set geom2 = ST_AsText(ST_Transform(ST_SetSRID(geom,4326),2154)) ;  -- reprojection 2346 to 2154
+alter table administratif_osm.commune_simplif drop column geom ; -- inutile car reprojection des données
+alter table administratif_osm.commune_simplif rename column geom2 to geom ;
 select UpdateGeometrySRID ('administratif_osm','commune_simplif', 'geom', 2154);  -- maj srid 2154
 
 -- code ci-dessous alternative à UpdateGeometrySRID
@@ -130,7 +142,7 @@ select UpdateGeometrySRID ('administratif_osm','commune_simplif', 'geom', 2154);
 -- saisie METADATA table administratif_osm.commune_simplif
 -- delete from metadata.metachamp
 -- where sschema ='administratif_osm' and ttable ='commune_simplif' ;
-
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('codgeo','Code géographique de la commune - France métropolitaine','administratif_osm','commune_simplif','OSM','import_data_commune', '08/11/19', 6),
@@ -142,7 +154,7 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('wikipedia','entrée wikipédia (code langue suivi du nom de l''article)','administratif_osm','commune_simplif', 'OSM','import_data_commune', '08/11/19', 6),
 	('geom','Géométrie simplifiée en L93 de la commune - France métropolitaine','administratif_osm','commune_simplif', 'OSM','import_data_commune', '08/11/19', 6)
 	;
-
+set client_encoding = 'WIN1252' ;
 ----------------
 ---- CREATE TABLE EPCI France métropolitaine
 --- création depuis la table des communes reprojetées
@@ -152,6 +164,7 @@ select epci, st_union(geom) as geom
 from administratif_osm.commune
 group by epci ;
 
+select UpdateGeometrySRID ('administratif_osm','epci', 'geom', 2154);  -- maj srid car non automatique depuis la couche de base
 alter table administratif_osm.epci add constraint pk_epci
 	primary key (epci);
 create index gx_epci on  administratif_osm.epci using gist (geom);
@@ -175,6 +188,7 @@ update administratif_osm.epci t4 set nature_epci = t3.nature_epci
 	where t4.epci = t3.epci ;
 	
 -- saisie METADATA table administratif_osm.epci
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('epci','Code géographique de l''EPCI)','administratif_osm','epci', 'INSEE','import_data_commune', '08/11/19', 7),
@@ -182,7 +196,7 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('nature_epci','Nature d''établissement public','administratif_osm','epci', 'INSEE','import_data_commune', '08/11/19', 7),
 	('geom','Géométrie de l''EPCI en L93 après fusion des limites communales précises - France métropolitaine','administratif_osm','epci', 'modaal script','import_data_commune', '08/11/19', 7)
 	;
-
+set client_encoding = 'WIN1252' ;
 
 ----------------
 ---- CREATE TABLE DEPARTEMENT France métropolitaine
@@ -194,6 +208,7 @@ from administratif_osm.commune
 group by dep, reg
 order by dep ;
 
+select UpdateGeometrySRID ('administratif_osm','departement', 'geom', 2154);  -- maj srid car non automatique depuis la couche de base
 alter table administratif_osm.departement add constraint pk_departement
 	primary key (dep);
 create index gx_dep on  administratif_osm.departement using gist (geom);
@@ -217,6 +232,7 @@ update administratif_osm.departement t4 set cheflieu = t3.cheflieu
 	where t4.dep = t3.dep ;
 
 -- saisie METADATA table administratif_osm.departement
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('dep','Code géographique du département)','administratif_osm','departement', 'INSEE','import_data_commune', '08/11/19', 7),
@@ -225,7 +241,7 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('cheflieu','Code géographique de la commune chef-lieu','administratif_osm','departement', 'INSEE','import_data_commune', '08/11/19', 7),
 	('geom','Géométrie du département en L93 après fusion des limites communales précises - France métropolitaine','administratif_osm','departement', 'modaal script','import_data_commune', '08/11/19', 7)
 	;
-
+set client_encoding = 'WIN1252' ;
 ----------------
 ---- CREATE TABLE REGION France métropolitaine
 --- création depuis la table des départements
@@ -236,6 +252,7 @@ from administratif_osm.departement
 group by reg
 order by reg ;
 
+select UpdateGeometrySRID ('administratif_osm','region', 'geom', 2154);  -- maj srid car non automatique depuis la couche de base
 alter table administratif_osm.region add constraint pk_region
 	primary key (reg);
 create index gx_reg on  administratif_osm.region using gist (geom);
@@ -259,6 +276,7 @@ update administratif_osm.region t4 set cheflieu = t3.cheflieu
 	where t4.reg = t3.reg ;
 
 -- saisie METADATA table administratif_osm.region
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('reg','Code géographique de la région)','administratif_osm','region', 'INSEE','import_data_commune', '08/11/19', 7),
@@ -266,5 +284,5 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('cheflieu','Code géographique de la commune chef-lieu','administratif_osm','region', 'INSEE','import_data_commune', '08/11/19', 7),
 	('geom','Géométrie de la région en L93 après fusion des limites départementales précises - France métropolitaine','administratif_osm','region', 'modaal script','import_data_commune', '08/11/19', 7)
 	;
-
+set client_encoding = 'WIN1252' ;  -- specification encodage pour console client
 select current_timestamp ;  -- heure fin script

@@ -66,7 +66,7 @@ copy sitadel.localtemp
 	
 -- MISE EN FORME table local autorisé
 -- récupérer le "0" des codes insee des dept et communes
-alter table sitadel.localtemp drop column idgeo;
+alter table sitadel.localtemp drop column if exists idgeo;
 alter table sitadel.localtemp add column idgeo varchar(6);
 update sitadel.localtemp a set idgeo = concat('0',a.ID) 
 	where length(a.id)=4 or length(a.id)=1
@@ -129,9 +129,10 @@ insert into sitadel.localautorise
 		cast(total_surf as numeric)
 	from sitadel.localtemp;
 	
-drop table sitadel.localtemp;
+drop table if exists sitadel.localtemp;
 
 -- insertion métadata table sitadel.localautorise
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('idgeo','code géographique SOES de l''entité','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
@@ -152,11 +153,11 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('totalsp_surf','Surface totale autorisée en m² de locaux de service public','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1),
 	('total_surf','Total surface autorisée de local en m²','sitadel','localautorise','SOES','sitadel_local_import', '13/11/19', 1)
 	;
-
+set client_encoding = 'WIN1252' ; 
 ----------------------------------------------
 -- creation & import table local commencé
 -- warning : ordre des colonnes importantes cause insert into
-drop table sitadel.localcommence;
+drop table if exists sitadel.localcommence;
 create table sitadel.localcommence
 (
     idgeo varchar(6),
@@ -179,7 +180,7 @@ create table sitadel.localcommence
 	primary key (idgeo,annee)
 ) ;
 -- table temporaire pour conversion des data avant import dans table finale
-drop table sitadel.localtemp;
+drop table if exists sitadel.localtemp;
 create table sitadel.localtemp
 (
     id varchar(6),
@@ -207,7 +208,7 @@ COPY sitadel.localtemp
 	
 -- MISE EN FORME table local commencé
 -- récupérer le "0" des codes insee des dept et communes
-alter table sitadel.localtemp drop column idgeo;
+alter table sitadel.localtemp drop column if exists idgeo;
 alter table sitadel.localtemp add column idgeo varchar(6);
 update sitadel.localtemp a set idgeo = concat('0',a.ID) 
 	where length(a.id)=4 or length(a.id)=1
@@ -270,9 +271,10 @@ insert into sitadel.localcommence
 		cast(total_surf as numeric)
 	from sitadel.localtemp;
 	
-drop table sitadel.localtemp;
+drop table if exists sitadel.localtemp;
 
 -- insertion métadata table sitadel.localcommence
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('idgeo','code géographique SOES de l''entité','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
@@ -293,3 +295,4 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('totalsp_surf','Surface totale commencée en m² de locaux de service public','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1),
 	('total_surf','Total surface commencée de local en m²','sitadel','localcommence','SOES','sitadel_local_import', '13/11/19', 1)
 	;
+set client_encoding = 'WIN1252' ;

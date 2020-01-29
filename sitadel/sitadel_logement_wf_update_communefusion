@@ -42,6 +42,7 @@ alter table sitadel.lgtautorisev2 add constraint lgtautorisev2_pkey
 drop table if exists sitadel.lgttemp ;
 
 -- insertion métadata table sitadel.lgtautorisev2
+set client_encoding = 'UTF8' ;
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('codgeo','code géographique de la commune','sitadel','lgtautorisev2','modaal script','sitadel_logement_wf_update_communefusion', '13/11/19', 1),
@@ -58,7 +59,7 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('lgttotal_surf','Total surface en m² après fusion de communes','sitadel','lgtautorisev2','modaal script','sitadel_logement_wf_update_communefusion', '13/11/19', 1),
 	('codgeofrom','mentionne l''évolution historique du codgeo de la commune','sitadel','lgtautorisev2','modaal script','insee_commune_evolution_import', '13/11/19', 1)
 	;
-
+set client_encoding = 'WIN1252' ;
 -- TABLE LOGEMENT COMMENCE
 -- creation table temporaire apres jointure
 drop table if exists sitadel.lgttemp;
@@ -93,6 +94,7 @@ alter table sitadel.lgtcommencev2 add constraint pk_lgtcommencev2
 drop table if exists sitadel.lgttemp ;
 
 -- insertion métadata table sitadel.lgtcommencev2
+set client_encoding = 'UTF8' ;
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('codgeo','code géographique de la commune','sitadel','lgtcommencev2','modaal script','sitadel_logement_wf_update_communefusion', '13/11/19', 1),
@@ -109,3 +111,4 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('lgttotal_surf','Total surface en m² après fusion de communes','sitadel','lgtcommencev2','modaal script','sitadel_logement_wf_update_communefusion', '13/11/19', 1),
 	('codgeofrom','mentionne l''évolution historique du codgeo de la commune','sitadel','lgtcommencev2','modaal script','insee_commune_evolution_import', '13/11/19', 1)
 	;
+set client_encoding = 'WIN1252' ;

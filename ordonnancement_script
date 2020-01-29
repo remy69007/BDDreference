@@ -5,11 +5,15 @@
 -- MISSION  : Capitalisation BBD reference
 -- objectif : ordonnancement des scripts si réinitialisation complète/update data
 ----------------------------------------
+STRUCTURE
+mcd_metadata_table								-- structure MCD 
 
-
+SOCLE DATA
 epci_data_import  								-- insee
 insee_commune_evolution_import  				-- insee
 osm_data_commune_import							-- osm
+
+DATA METIER
 sitadel_logement_import  						-- sitadel
 sitadel_local_import							-- sitadel
 sitadel_local_wf_update_communefusion			-- sitadel

@@ -6,9 +6,9 @@
 -- Script pour la scréation du schéma contenant les métadonnées des tables de la base.
 ----------------------------------------
 
-\set on_error_stop true
+\set ON_ERROR_STOP on
 
-create schema metadata ;
+create schema if not exists metadata ;
 
 ----------------------------------------------
 -- creation & import table logement autorisé
@@ -29,6 +29,7 @@ create table metadata.metachamp
 create index ix_metachamp on  metadata.metachamp using btree (sschema, ttable, champ, origin);
 
 -- saisie METADATA table metadata.metachamp
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('champ','nom du champ sur lequel porte la description','metadata','metachamp','modaal script','create_bddreference_table', '13/11/19', 1),

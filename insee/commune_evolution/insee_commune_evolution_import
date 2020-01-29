@@ -68,6 +68,7 @@ alter table administratif.communeevol add column codgeov varchar(4) ;
 update administratif.communeevol set codgeov = :version ;  -- maj à chaque import du fichier.
 
 -- saisie METADATA table administratif.communeevol
+set client_encoding = 'UTF8' ;  -- specification encodage pour console client
 insert into metadata.metachamp (champ, description, sschema, ttable, origin, originmethod, dateinteg, idsource) 
 	values 
 	('codgeo_ini','Code géographique ayant existé depuis 01/01/2003','administratif','communeevol','INSEE','insee_commune_evolution_import', '13/11/19', 1),
@@ -76,6 +77,6 @@ insert into metadata.metachamp (champ, description, sschema, ttable, origin, ori
 	('codgeofrom','mentionne l''évolution historique du codgeo de la commune','administratif','communeevol','modaal script','insee_commune_evolution_import', '13/11/19', 1),
 	('codgeov','mentionne l''année de validité du codgeo','administratif','communeevol', 'modaal script','insee_commune_evolution_import', '13/11/19', 1)
 	;
-
+set client_encoding = 'WIN1252' ; 
 
 
